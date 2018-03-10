@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<link rel="icon" href="http://oracle.cameronpallen.com/favicon.ico?v=2" />
+<meta charset="utf-8">
+<title>Ω-Oracle</title>
+<style>
+@import url(nv.d3.min.css);
+</style>
+<center><h1>\(\Omega\) Oracle \(\Omega\)  </h1></center>
+<div id="chart">
+  <svg style='height:700px'></svg>
+</div>
+<center>
+<br>
+<br>
+Funding support from <a
+     href='https://depts.washington.edu/wracuw/index.html'>USDA-WRAC</a>
+<br>
+<br>
+<img src="/ceoas_logo.png", width='20%'></img>
+<h3>
+Powered by <a 
+    href="http://nvs.nanoos.org/">NANOOS-NVS</a>,  <a 
+    href="https://darksky.net/poweredby/">Dark Sky</a>, and <a 
+    href="http://www.flaterco.com/xtide/">XTide</a>
+</h3>
+<p>  Thanks to Whiskey Creek Shellfish Hatchery, <a 
+    href="http://pandas.pydata.org/">pandas</a>, <a
+    href="http://www.numpy.org/">NumPy</a>, <a
+    href="http://www.scipy.org/">SciPy</a>, <a
+    href="http://keras.io/">Keras</a>, <a
+    href="http://aiohttp.readthedocs.io/">aiohttp</a>, and <a
+    href="http://www.d3js.org/">D3.js</a>
+</p></center>
+<script src="d3.min.js"></script>
+<script src="nv.d3.min.js"></script>
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+<script type="text/javascript" 
+        src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_SVG">
+</script>
+<script>
+var stream = [];
+var chart;
+var ws;
+
+transform_data = function() {
+    meas = stream.map(function(d){
+            return {x: new Date(d.time), y: d.omega}
+    });
+    est = stream.map(function(d){
+            return {x: new Date(d.time), y: d.omega_est}
+    });
+    err = stream.map(function(d){
+            return {x: new Date(d.time), y: (d.omega === null?
+                    null: Math.abs(d.omega - d.omega_est))}
+    });
+    return [
+    {
+      values: est,
+      key: 'Oracle Prediction',
+      color: '#00ffff',
+      area: true
+    },
+    {
+      values: meas,
+      key: 'Measured Value',
+      color: '#ff7f0e',
+      area: false
+    },
+    {
+      values: err,
+      key: 'Error',
+      color: '#880088',
+      showLegend: false,
+      area: false
+    },
+    {
+      key: 'Now',
+      values: [{x: new Date(), y: 0}, {x: new Date(), 
+        y: Math.max(
+              Math.max(...stream.map(function(d){return d.omega})),
+              Math.max(...stream.map(function(d){return d.omega_est}))
+        )}],
+      color: '#808080',
+      disableTooltip: true,
+      area: false
+    }
+  ];
+}
+
+$(document).ready(function(){
+nv.addGraph(function() {
+    chart = nv.models.lineWithFocusChart()
+                .margin({left: 100, right:100})  //Adjust chart margins to give the x-axissome breathing room.
+                .useInteractiveGuideline(true)  //nice looking tooltipsand a guideline!
+                .duration(0)  //how fast do you want the lines totransition?
+                .forceY(0)
+                .showLegend(true)       //Show the legend, allowing users toturn on/off line series.
+                .showYAxis(true)        //Show the y-axis
+                .showXAxis(true)        //Show the x-axis
+                .focusHeight(150)
+       //         .interpolate('basis', .3)
+  ;
+
+  chart.xAxis     //Chart x-axis settings
+      .axisLabel('Time')
+      .tickFormat(function(d) { return d3.time.format('%b%e %I%p')(new Date(d)); })
+  chart.x2Axis     //Chart x-axis settings
+      .axisLabel('Time')
+      .tickFormat(function(d) { return d3.time.format('%b%e %I%p')(new Date(d)); })
+
+  chart.yAxis     //Chart y-axis settings
+  //.axisLabel('Ωarag')
+      .tickFormat(function(num){return num === null ? 'NaN' : d3.format('.02f')(num)});
+
+  chart.y2Axis     //Chart y-axis settings
+  //.axisLabel('Ωarag')
+      .tickFormat(function(num){return num === null ? 'NaN' : d3.format('.02f')(num)});
+
+  //Update the chart when window resizes.
+  //nv.utils.windowResize(chart.update)
+  nv.utils.windowResize(function(){ chart.update(); });
+  return chart;
+});
+//Obviously a little bit of a security hole to send this to the browser, 
+//  but you still have to get inside
+//  the first security layer to see this. And the data isn't super senstiive.
+ws = new WebSocket('wss://internal:b0yst3r!@oracle.cameronpallen.com/oracle_ws/netarts/');
+ws.onclose = function(){
+   ws = new WebSocket('wss://internal:b0yst3r!@oracle.cameronpallen.com/oracle_ws/netarts/');
+};
+ws.onmessage = function(ev){
+    if (ev.data === 'ping') {ws.send('pong')} else {
+     //console.log(ev)
+     var json = JSON.parse(ev.data);
+     stream = json
+     d3.select('#chart svg')    //Select the <svg> element  to render the chart in.   
+        .datum(transform_data)   //Populate the <svg> element with chart data...
+        .call(chart)          //Finally, render the chart!
+    oldlabel = d3.selectAll('.nv-y').selectAll('.nv-axislabel').node().remove()
+    d3.select('#chart svg').append('foreignObject').attr("width", 50).attr("height", 50)
+           .attr('x', 25)
+           .attr('y', 230)
+         .append("xhtml:text").html("\\(\\Omega_\\text{Arag}\\)");
+     MathJax.Hub.Queue(["Typeset",MathJax.Hub, d3.select('#chart svg').node()])
+    }
+}
+});
+</script>
