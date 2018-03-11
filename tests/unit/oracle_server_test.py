@@ -56,6 +56,19 @@ class TestOracleService(unittest.TestCase):
         _.aiohttp.web.run_app.assert_called_once_with(_.app, port=_.port)
         self.assertEqual(_.websocket_cls.app, _.app)
 
+    @unittest.mock.patch('oracle.oracle_server.pandas', _.pandas)
+    @unittest.mock.patch('oracle.oracle_server.time', _.time)
+    def test_mock_data(self):
+        mock_ret = unittest.mock.MagicMock(return_value=None)
+        _.pandas.DataFrame = mymock(mock_ret)
+        _.pandas.date_range = mymock(_.date_range)
+        _.time.sleep = mymock(None)
+        ret = module_ut.est_Ω.train_ensemble().predict_live()
+        _.time.sleep.assert_called_once_with(10)
+        self.assertEqual(mock_ret, ret)
+        mock_ret.assert_not_called()
+        self.assertEqual(_.pandas.date_range.call_count, 1)
+
 
 if __name__ == '__main__':
     unittest.main()
