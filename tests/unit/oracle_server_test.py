@@ -1,3 +1,4 @@
+import asyncio
 import unittest.mock
 
 import oracle.oracle_server as module_ut
@@ -52,6 +53,7 @@ class TestOracleService(unittest.TestCase):
               'test_temp/oracle_keras_0.h5', 'test_temp/oracle_keras_1.h5']),
             unittest.mock.call(_.train_ensemble, 'test_temp'),
         ], any_order=True)
+        self.assertEqual(_.functools.partial.call_count, 2)
         mock_update_omega.assert_called_once_with(_.partial_load_model)
         _.aiohttp.web.run_app.assert_called_once_with(_.app, port=_.port)
         self.assertEqual(_.websocket_cls.app, _.app)
@@ -68,6 +70,31 @@ class TestOracleService(unittest.TestCase):
         self.assertEqual(mock_ret, ret)
         mock_ret.assert_not_called()
         self.assertEqual(_.pandas.date_range.call_count, 1)
+
+    @unittest.mock.patch('oracle.oracle_server.est_Ω', _.est_Ω)
+    def test_train_ensemble(self):
+        mock_sleep = mymock(None)
+        module_ut.ENSEMBLE_SIZE = 3
+        _.est_Ω.train_ensemble = mymock(None)
+        async def mock_sleep_async(x):
+            mock_sleep(x)
+        with unittest.mock.patch('oracle.oracle_server.asyncio.sleep',
+            mock_sleep_async):
+          asyncio.get_event_loop().run_until_complete(
+                  module_ut.train_ensemble('faketempdir', _.app)
+          )
+        mock_sleep.assert_has_calls([
+            unittest.mock.call(1),
+            unittest.mock.call(1),
+            unittest.mock.call(1),
+        ], any_order=True)
+        self.assertEqual(mock_sleep.call_count, 3)
+        _.est_Ω.train_ensemble.assert_has_calls([
+            unittest.mock.call('faketempdir/oracle_keras_0.h5'),
+            unittest.mock.call('faketempdir/oracle_keras_1.h5'),
+            unittest.mock.call('faketempdir/oracle_keras_2.h5'),
+        ], any_order=True)
+        self.assertEqual(_.est_Ω.train_ensemble.call_count, 3)
 
 
 if __name__ == '__main__':
