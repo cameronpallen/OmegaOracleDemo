@@ -21,11 +21,15 @@ years of continuous chemical monitoring.
 
 The only dependencies are the python libraries listed in setup.py and can be
 installed with 
+
 ```python3 setup.py install``` 
+
 (recomended in a docker container,
 virtualenv, etc.), the server
 can be run with 
+
 ```python3 src/oracle/oracle_server.py```
+
 Default port 7879 can be
 updated with the `--port` option. The tempdir option does nothing in this demo
 version so do not worry about it, the directory does not have to exist.
