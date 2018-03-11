@@ -121,12 +121,9 @@ nv.addGraph(function() {
   nv.utils.windowResize(function(){ chart.update(); });
   return chart;
 });
-//Obviously a little bit of a security hole to send this to the browser, 
-//  but you still have to get inside
-//  the first security layer to see this. And the data isn't super senstiive.
-ws = new WebSocket('wss://internal:b0yst3r!@oracle.cameronpallen.com/oracle_ws/netarts/');
+ws = new WebSocket('wss://oracle.cameronpallen.com/oracle_ws/netarts/');
 ws.onclose = function(){
-   ws = new WebSocket('wss://internal:b0yst3r!@oracle.cameronpallen.com/oracle_ws/netarts/');
+   ws = new WebSocket('wss://oracle.cameronpallen.com/oracle_ws/netarts/');
 };
 ws.onmessage = function(ev){
     if (ev.data === 'ping') {ws.send('pong')} else {
