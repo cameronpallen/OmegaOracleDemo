@@ -47,7 +47,7 @@ class TestOracleService(unittest.TestCase):
         self.assertEqual(_.app.on_startup, [_.partial_train, _.scheduled_job])
         self.assertEqual(_.app.on_shutdown, [_.websocket_shutdown])
         mock_schedule_task.assert_called_once_with(_.update_job,
-            module_ut.datetime.timedelta(seconds=15))
+            module_ut.datetime.timedelta(seconds=5))
         _.functools.partial.assert_has_calls([
             unittest.mock.call(_.load_model, weights=[
               'test_temp/oracle_keras_0.h5', 'test_temp/oracle_keras_1.h5']),
@@ -66,7 +66,7 @@ class TestOracleService(unittest.TestCase):
         _.pandas.date_range = mymock(_.date_range)
         _.time.sleep = mymock(None)
         ret = module_ut.est_Ω.train_ensemble().predict_live()
-        _.time.sleep.assert_called_once_with(10)
+        _.time.sleep.assert_called_once_with(3)
         self.assertEqual(mock_ret, ret)
         mock_ret.assert_not_called()
         self.assertEqual(_.pandas.date_range.call_count, 1)
@@ -95,6 +95,29 @@ class TestOracleService(unittest.TestCase):
             unittest.mock.call('faketempdir/oracle_keras_2.h5'),
         ], any_order=True)
         self.assertEqual(_.est_Ω.train_ensemble.call_count, 3)
+
+    @unittest.mock.patch('oracle.oracle_server.est_Ω', _.est_Ω)
+    @unittest.mock.patch('oracle.oracle_server.WebSocket', _.websocket_cls)
+    def test_update_omega(self):
+        prediction_df = module_ut.pandas.DataFrame(
+            {'Ω' : [1, 2, 3, 2, 4], 'Ω_est': [4, 2, 3, 1, 3]},
+            index=module_ut.pandas.date_range(
+                start=module_ut.datetime.datetime(1987, 7, 17), periods=5
+            )
+        )
+        mock_predict_live = mymock(prediction_df)
+        _.loaded_model.predict_live = mock_predict_live
+        mock_load_model = mymock(_.loaded_model)
+        _.websocket_cls.put_message = mymock(None)
+        module_ut.update_omega(mock_load_model)()
+        _.websocket_cls.put_message.assert_called_once_with(
+          '[{"omega": 1, "omega_est": 4, "time": "1987-07-17T00:00:00.000Z"},'
+          ' {"omega": 2, "omega_est": 2, "time": "1987-07-18T00:00:00.000Z"},'
+          ' {"omega": 3, "omega_est": 3, "time": "1987-07-19T00:00:00.000Z"},'
+          ' {"omega": 2, "omega_est": 1, "time": "1987-07-20T00:00:00.000Z"},'
+          ' {"omega": 4, "omega_est": 3, "time": "1987-07-21T00:00:00.000Z"}]'
+        )
+
 
 
 if __name__ == '__main__':

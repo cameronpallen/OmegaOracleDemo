@@ -21,7 +21,6 @@ setuptools.setup(
             'aiohttp==2.1.0',
             'numpy==1.12.1',
             'pandas==0.20.2',
-            'pytz==2017.2',
             'mock==2.0.0',
         ],
 )

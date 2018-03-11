@@ -11,7 +11,6 @@ import threading
 import aiohttp.web
 import numpy
 import pandas
-import pytz
 
 ENSEMBLE_SIZE = 10
 
@@ -25,7 +24,7 @@ est_Ω = mock.Mock()
 _N = 24 * 4 * 14
 def mock_predict():
     # Simulate cpu blocking to demonstrat the server remains responsive.
-    time.sleep(10)
+    time.sleep(3)
     # return some fake data.
     ret = pandas.DataFrame(
       {
@@ -84,7 +83,7 @@ def main(port, tempdir):
     update_job = update_omega(load_model)
     # Begin scheduled updates of model prediction
     app.on_startup.append((schedule_task(update_job,
-        datetime.timedelta(seconds=15))))
+        datetime.timedelta(seconds=5))))
     app.on_shutdown.append(WebSocket.shutdown)
     # Start serving the app.
     aiohttp.web.run_app(app, port=port)
@@ -118,7 +117,6 @@ def update_omega(load_model):
     '''
     def do_prediction():
         logging.info('do omega estimate update')
-        now = pytz.UTC.localize(datetime.datetime.utcnow())
         # Get the preduction result
         df = load_model().predict_live()
         # Convert data to format expected by frontend
@@ -128,7 +126,7 @@ def update_omega(load_model):
             df.reset_index().rename(
               columns={'index': 'time', 'Ω': 'omega', 'Ω_est': 'omega_est'}
             ).dropna(0, 'all').iterrows()
-        ])
+        ], sort_keys=True)
         logging.info('update done. writting message to queues....')
         # Send message to all attached clients
         WebSocket.put_message(message)
@@ -306,7 +304,7 @@ class WebSocket(object):
                 ws.send_str('ping')
                 async for msg in ws:
                     logging.info(msg)
-                    await asyncio.sleep(20)
+                    await asyncio.sleep(10)
                     ws.send_str('ping')
             finally:
                 instance._on_close(ws)
