@@ -1,6 +1,8 @@
 import asyncio
 import unittest.mock
 
+import mock
+
 import oracle.oracle_server as module_ut
 
 _ = unittest.mock.sentinel
@@ -38,11 +40,12 @@ class TestOracleService(unittest.TestCase):
         mock_update_omega = mymock(_.update_job)
         mock_schedule_task = mymock(_.scheduled_job)
         module_ut.ENSEMBLE_SIZE = 2
-        with unittest.mock.patch('oracle.oracle_server.update_omega',
-               mock_update_omega):
-          with unittest.mock.patch('oracle.oracle_server.schedule_task',
-                 mock_schedule_task):
-            module_ut.main(_.port, 'test_temp')
+        with unittest.mock.patch(
+                'oracle.oracle_server.update_omega', mock_update_omega
+             ), unittest.mock.patch(
+                'oracle.oracle_server.schedule_task', mock_schedule_task
+             ):
+                module_ut.main(_.port, 'test_temp')
         _.aiohttp_web.Application.assert_called_once_with()
         self.assertEqual(_.app.on_startup, [_.partial_train, _.scheduled_job])
         self.assertEqual(_.app.on_shutdown, [_.websocket_shutdown])
@@ -79,14 +82,14 @@ class TestOracleService(unittest.TestCase):
         async def mock_sleep_async(x):
             mock_sleep(x)
         with unittest.mock.patch('oracle.oracle_server.asyncio.sleep',
-            mock_sleep_async):
-          asyncio.get_event_loop().run_until_complete(
+              mock_sleep_async):
+            asyncio.get_event_loop().run_until_complete(
                   module_ut.train_ensemble('faketempdir', _.app)
-          )
+            )
         mock_sleep.assert_has_calls([
-            unittest.mock.call(1),
-            unittest.mock.call(1),
-            unittest.mock.call(1),
+            unittest.mock.call(.1),
+            unittest.mock.call(.1),
+            unittest.mock.call(.1),
         ], any_order=True)
         self.assertEqual(mock_sleep.call_count, 3)
         _.est_Ω.train_ensemble.assert_has_calls([
@@ -118,6 +121,80 @@ class TestOracleService(unittest.TestCase):
           ' {"omega": 4, "omega_est": 3, "time": "1987-07-21T00:00:00.000Z"}]'
         )
 
+    def test_index(self):
+        _.request.match_info = {}
+        mock_read_file = mymock(_.file_contents)
+        mock_listdir = mymock(['anything except index.html'])
+        with unittest.mock.patch(
+                'oracle.oracle_server._read_file', mock_read_file
+            ), unittest.mock.patch(
+                'oracle.oracle_server.os.listdir', mock_listdir
+            ), self.assertRaises(ValueError):
+                asyncio.get_event_loop().run_until_complete(
+                   module_ut.index('myfakedir')(_.request)
+                )
+        mock_listdir.assert_called_once_with('myfakedir')
+        mock_read_file.assert_not_called()
+        mock_response_cls = mymock(_.ret)
+        mock_listdir = mymock(['somefile', 'index.html', 'different file'])
+        with unittest.mock.patch(
+                'oracle.oracle_server._read_file', mock_read_file
+            ), unittest.mock.patch(
+                'oracle.oracle_server.os.listdir', mock_listdir
+            ), unittest.mock.patch(
+                'oracle.oracle_server.aiohttp.web.Response', mock_response_cls
+            ):
+                ret = asyncio.get_event_loop().run_until_complete(
+                   module_ut.index('myfakedir')(_.request)
+                )
+        mock_response_cls.assert_called_once_with(body=_.file_contents,
+                content_type='text/html')
+        mock_listdir.assert_called_once_with('myfakedir')
+        mock_read_file.assert_called_once_with('myfakedir', 'index.html')
+        self.assertEqual(ret, _.ret)
+
+        _.request.match_info = {'page': '/style.css'}
+        mock_listdir = mymock(['style.css', 'index.html', 'different file'])
+        with unittest.mock.patch(
+                'oracle.oracle_server._read_file', mymock(_.file_contents)
+            ) as mock_read_file, unittest.mock.patch(
+                'oracle.oracle_server.os.listdir', mock_listdir
+            ), unittest.mock.patch(
+                'oracle.oracle_server.aiohttp.web.Response', mymock(_.ret)
+            ) as mock_response_cls:
+                ret = asyncio.get_event_loop().run_until_complete(
+                   module_ut.index('other/dir')(_.request)
+                )
+        mock_response_cls.assert_called_once_with(body=_.file_contents,
+                content_type='text/css')
+        mock_listdir.assert_called_once_with('other/dir')
+        mock_read_file.assert_called_once_with('other/dir', 'style.css')
+        self.assertEqual(ret, _.ret)
+
+        _.request.match_info = {'page': 'logo.jpg'}
+        mock_listdir = mymock(['style.css', 'index.html', 'logo.jpg'])
+        with unittest.mock.patch(
+                'oracle.oracle_server._read_file', mymock(_.file_contents)
+            ) as mock_read_file, unittest.mock.patch(
+                'oracle.oracle_server.os.listdir', mock_listdir
+            ), unittest.mock.patch(
+                'oracle.oracle_server.aiohttp.web.Response', mymock(_.ret)
+            ) as mock_response_cls:
+                ret = asyncio.get_event_loop().run_until_complete(
+                   module_ut.index('other/dir')(_.request)
+                )
+        mock_response_cls.assert_called_once_with(body=_.file_contents)
+        mock_listdir.assert_called_once_with('other/dir')
+        mock_read_file.assert_called_once_with('other/dir', 'logo.jpg')
+        self.assertEqual(ret, _.ret)
+
+    def test_read_file(self):
+        with mock.patch(
+                'builtins.open', mock.mock_open(read_data='my_data')
+             ) as m_open:
+            ret = module_ut._read_file('my/dir', 'page.html')
+        self.assertEqual(ret, 'my_data')
+        m_open.assert_called_once_with('my/dir/page.html', 'rb')
 
 
 if __name__ == '__main__':

@@ -21,30 +21,30 @@ ENSEMBLE_SIZE = 10
 import mock
 import time
 est_Ω = mock.Mock()
-_N = 24 * 4 * 14
 def mock_predict():
     # Simulate cpu blocking to demonstrat the server remains responsive.
     time.sleep(3)
+    N = 24 * 4 * 14
     # return some fake data.
     ret = pandas.DataFrame(
       {
         'Ω': (1.5
-           + .5 * numpy.sin(numpy.arange(_N) * (2 * numpy.pi) * 14 / _N)
-           + .4 * numpy.sin(numpy.arange(_N) * (2 * numpy.pi) * 28 / _N)
-           + .2 * numpy.cos(numpy.arange(_N) * (2 * numpy.pi) * 20 / _N)
+           + .5 * numpy.sin(numpy.arange(N) * (2 * numpy.pi) * 14 / N)
+           + .4 * numpy.sin(numpy.arange(N) * (2 * numpy.pi) * 28 / N)
+           + .2 * numpy.cos(numpy.arange(N) * (2 * numpy.pi) * 20 / N)
            # Include some randomness so we can see the data change
            #    as the app is running
-           + .1 * numpy.random.rand(_N)
+           + .15 * numpy.random.rand(N)
         ),
         'Ω_est': (1.5
-           + .5 * numpy.sin(numpy.arange(_N) * (2 * numpy.pi) * 14 / _N)
-           + .35 * numpy.sin(numpy.arange(_N) * (2 * numpy.pi) * 28 / _N)
+           + .5 * numpy.sin(numpy.arange(N) * (2 * numpy.pi) * 14 / N)
+           + .35 * numpy.sin(numpy.arange(N) * (2 * numpy.pi) * 28 / N)
         ),
 
       },
       pandas.date_range(
           start=datetime.datetime.now() - datetime.timedelta(7),
-          periods=_N, freq='15T'
+          periods=N, freq='15T'
       )
     )
     ret.loc[datetime.datetime.now():, 'Ω'] = numpy.nan
@@ -102,7 +102,7 @@ async def train_ensemble(tempdir, app):
 
 async def _train_ensemble_member(tempdir, i):
     est_Ω.train_ensemble(os.path.join(tempdir, 'oracle_keras_{}.h5'.format(i)))
-    await asyncio.sleep(1)
+    await asyncio.sleep(.1)
 
 
 def update_omega(load_model):
@@ -134,7 +134,7 @@ def update_omega(load_model):
     return do_prediction
 
 
-def _schedule_task(loop, task, interval, executor):
+def _schedule_task(loop, task, interval, executor, end=None):
     '''
     Keeps track of the timing of using executor to do task every interval often
     '''
@@ -156,7 +156,8 @@ def _schedule_task(loop, task, interval, executor):
                     await asyncio.sleep(1)
             finally:
                 # Always schedule another check, even if there is an exception.
-                next_check_schedule(when)
+                if end is None or datetime.datetime.utcnow() < end:
+                    next_check_schedule(when)
         return check_schedule
     return make_checker
 
@@ -192,18 +193,23 @@ def schedule_task(task, interval, delay=None):
     return schedule_task_async
 
 
+def _read_file(directory, page):
+    fname = os.path.join(directory, page)
+    with open(fname, 'rb') as fh:
+        ret = fh.read()
+    return ret
+
+
 def index(directory):
     ''' Serve static files from the current directory. '''
     async def _index(request):
-        page = request.match_info.get('page').strip('/') or 'index.html'
+        page = (request.match_info.get('page') or 'index.html').strip('/')
         logging.info('load page: [{}]'.format(
             os.path.join(directory, page))
         )
         if page not in os.listdir(directory):
             raise ValueError('PAGE NOT FOUND')
-        with open(os.path.join(directory, page), 'rb') as fh:
-            ret = fh.read()
-        response = dict(body=ret)
+        response = dict(body=_read_file(directory, page))
         if page.endswith('.css'):
             response['content_type'] = 'text/css'
         if page.endswith('.html'):
