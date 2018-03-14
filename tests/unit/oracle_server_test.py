@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import unittest.mock
 
 import mock
@@ -195,6 +196,84 @@ class TestOracleService(unittest.TestCase):
             ret = module_ut._read_file('my/dir', 'page.html')
         self.assertEqual(ret, 'my_data')
         m_open.assert_called_once_with('my/dir/page.html', 'rb')
+
+    def test_scheduler(self):
+        counters = {'task': 0, 'now': 0}
+        start_time = datetime.datetime(2017, 1, 1, 2)
+        _task = mymock(None)
+        end = datetime.datetime(2017, 1, 10, 5)
+        delay = datetime.timedelta(hours=37)
+        interval = datetime.timedelta(days=1)
+        _mock_sleep = mymock(None)
+        def task():
+            _task()
+            counters['task'] += 1
+            self.assertEqual(counters['task'] * 3 + 3, counters['now'])
+        async def mock_sleep(x):
+            _mock_sleep(x)
+        with unittest.mock.patch(
+                'oracle.oracle_server.asyncio.sleep', mock_sleep
+             ), unittest.mock.patch(
+                'oracle.oracle_server.datetime.datetime', _.datetime
+             ):
+                 loop = asyncio.get_event_loop()
+                 def mock_now():
+                     ret = (start_time
+                             + datetime.timedelta(hours=8 * counters['now']))
+                     if ret > end:
+                         _.app.loop.stop()
+                     counters['now'] += 1
+                     return ret
+                 _.datetime.utcnow = mock_now
+                 _.app.loop = loop
+                 _.app.loop.create_task(
+                   module_ut.schedule_task(
+                       task, interval, delay=delay, end=end
+                   )(_.app)
+                 )
+                 loop.run_forever()
+                 for task in asyncio.Task.all_tasks(loop):
+                     task.cancel()
+        self.assertEqual(_mock_sleep.call_count, 20)
+        self.assertEqual(_task.call_count, 8)
+
+    def test_scheduler__no_delay(self):
+        counters = {'task': 0, 'now': 0}
+        start_time = datetime.datetime(2017, 1, 1, 2)
+        _task = mymock(None)
+        end = datetime.datetime(2017, 1, 10, 5)
+        interval = datetime.timedelta(days=1)
+        _mock_sleep = mymock(None)
+        def task():
+            _task()
+            counters['task'] += 1
+            print(counters)
+            self.assertEqual(counters['task'] * 3 - 1, counters['now'])
+        async def mock_sleep(x):
+            _mock_sleep(x)
+        with unittest.mock.patch(
+                'oracle.oracle_server.asyncio.sleep', mock_sleep
+             ), unittest.mock.patch(
+                'oracle.oracle_server.datetime.datetime', _.datetime
+             ):
+                 loop = asyncio.get_event_loop()
+                 def mock_now():
+                     ret = (start_time
+                             + datetime.timedelta(hours=8 * counters['now']))
+                     if ret > end:
+                         _.app.loop.stop()
+                     counters['now'] += 1
+                     return ret
+                 _.datetime.utcnow = mock_now
+                 _.app.loop = loop
+                 _.app.loop.create_task(
+                   module_ut.schedule_task(task, interval, end=end)(_.app)
+                 )
+                 loop.run_forever()
+                 for task in asyncio.Task.all_tasks(loop):
+                     task.cancel()
+        self.assertEqual(_mock_sleep.call_count, 18)
+        self.assertEqual(_task.call_count, 9)
 
 
 if __name__ == '__main__':

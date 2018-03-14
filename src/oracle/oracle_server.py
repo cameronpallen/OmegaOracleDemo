@@ -134,7 +134,7 @@ def update_omega(load_model):
     return do_prediction
 
 
-def _schedule_task(loop, task, interval, executor, end=None):
+def _schedule_task(loop, task, interval, executor):
     '''
     Keeps track of the timing of using executor to do task every interval often
     '''
@@ -144,7 +144,7 @@ def _schedule_task(loop, task, interval, executor, end=None):
         async def check_schedule(when):
             # Does the actual schedule checking logic and excecution of task
             try:
-                if datetime.datetime.now() > when:
+                if datetime.datetime.utcnow() > when:
                     # Interval expired, execute the task.
                     await loop.run_in_executor(executor, task)
                     # Sucessful, set the time to excecute the task next.
@@ -156,8 +156,7 @@ def _schedule_task(loop, task, interval, executor, end=None):
                     await asyncio.sleep(1)
             finally:
                 # Always schedule another check, even if there is an exception.
-                if end is None or datetime.datetime.utcnow() < end:
-                    next_check_schedule(when)
+                next_check_schedule(when)
         return check_schedule
     return make_checker
 
