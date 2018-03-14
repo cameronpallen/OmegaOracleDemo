@@ -243,7 +243,7 @@ class WebSocket(object):
         '''
         Queue a message to be sent out to all acive clients.
         '''
-        asyncio.ensure_future(
+        return asyncio.ensure_future(
                 WebSocket._put_message(message),
                 loop=cls.app.loop
         )

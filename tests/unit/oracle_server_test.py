@@ -227,9 +227,7 @@ class TestOracleService(unittest.TestCase):
                  _.datetime.utcnow = mock_now
                  _.app.loop = loop
                  _.app.loop.create_task(
-                   module_ut.schedule_task(
-                       task, interval, delay=delay, end=end
-                   )(_.app)
+                   module_ut.schedule_task(task, interval, delay=delay)(_.app)
                  )
                  loop.run_forever()
                  for task in asyncio.Task.all_tasks(loop):
@@ -247,7 +245,6 @@ class TestOracleService(unittest.TestCase):
         def task():
             _task()
             counters['task'] += 1
-            print(counters)
             self.assertEqual(counters['task'] * 3 - 1, counters['now'])
         async def mock_sleep(x):
             _mock_sleep(x)
@@ -267,13 +264,78 @@ class TestOracleService(unittest.TestCase):
                  _.datetime.utcnow = mock_now
                  _.app.loop = loop
                  _.app.loop.create_task(
-                   module_ut.schedule_task(task, interval, end=end)(_.app)
+                   module_ut.schedule_task(task, interval)(_.app)
                  )
                  loop.run_forever()
                  for task in asyncio.Task.all_tasks(loop):
                      task.cancel()
         self.assertEqual(_mock_sleep.call_count, 18)
         self.assertEqual(_task.call_count, 9)
+
+
+class TestWebSocket(unittest.TestCase):
+    def test_put_message(self):
+        module_ut.WebSocket.app = _.app
+        loop = asyncio.get_event_loop()
+        _.app.loop = loop
+        with unittest.mock.patch(
+                'oracle.oracle_server.asyncio.Queue', mymock(_.queue1)
+                ):
+            ws1 = module_ut.WebSocket()
+        with unittest.mock.patch(
+                'oracle.oracle_server.asyncio.Queue', mymock(_.queue2)
+                ):
+            ws2 = module_ut.WebSocket()
+        _put1, _put2 = mymock(None), mymock(None)
+        async def put1(message):
+            _put1(message)
+        async def put2(message):
+            _put2(message)
+        _.queue1.put = put1
+        _.queue2.put = put2
+        loop.run_until_complete(
+          module_ut.WebSocket.put_message(_.message)
+        )
+        self.assertEqual(module_ut.WebSocket.last_message, _.message)
+        _put1.assert_called_once_with(_.message)
+        _put2.assert_called_once_with(_.message)
+
+    def test_read_queue(self):
+        module_ut.WebSocket.app = _.app
+        loop = asyncio.get_event_loop()
+        _.app.loop = loop
+        _send_str = mymock(None)
+        counter = {'count': 0}
+        def send_str(x):
+            counter['count'] += 1
+            self.assertEqual(counter['count'], x)
+            _send_str(x)
+            if x > 2:
+                _.ws.closed = True
+        _.ws.send_str = send_str
+        _.ws.closed = False
+        def on_close(x):
+            self.assertEqual(_.ws, x)
+            _.app.loop.stop()
+        ws = module_ut.WebSocket()
+        ws._on_close = on_close
+        asyncio.ensure_future(ws._queue.put(1), loop=loop)
+        ws._sched_proc_queue(_.ws)
+        loop.run_until_complete(ws._task)
+        asyncio.ensure_future(ws._queue.put(2), loop=loop)
+        ws._sched_proc_queue(_.ws)
+        loop.run_until_complete(ws._task)
+        asyncio.ensure_future(ws._queue.put(3), loop=loop)
+        ws._sched_proc_queue(_.ws)
+        loop.run_until_complete(ws._task)
+        for task in asyncio.Task.all_tasks(loop):
+            task.cancel()
+        _send_str.assert_has_calls([
+            unittest.mock.call(1),
+            unittest.mock.call(2),
+            unittest.mock.call(3),
+        ])
+        self.assertEqual(_send_str.call_count, 3)
 
 
 if __name__ == '__main__':
