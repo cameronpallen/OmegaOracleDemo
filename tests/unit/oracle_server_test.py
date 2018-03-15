@@ -426,15 +426,19 @@ class TestWebSocket(unittest.TestCase):
         _.req.app = _.app
         _.app.loop = loop
         _prepare = mymock(None)
-        _.ws.send_str = mymock(None)
 
+        myws = AsyncIterator(range(5))
+        myws.send_str = mymock(None)
         async def prepare(*args, **kwargs):
             return _prepare(*args, **kwargs)
-        _.ws.prepare = prepare
+        myws.prepare = prepare
         module_ut.WebSocket.last_message = _.last_message
+        mock_sleep = mymock(None)
+        async def mock_sleep_async(x):
+            mock_sleep(x)
         with unittest.mock.patch(
                 'oracle.oracle_server.aiohttp.web.WebSocketResponse',
-                mymock(_.ws)
+                mymock(myws)
             ) as mock_ws_response, unittest.mock.patch(
                 'oracle.oracle_server.WebSocket._on_close',
                 mymock(None)
@@ -442,21 +446,41 @@ class TestWebSocket(unittest.TestCase):
                 'oracle.oracle_server.WebSocket._sched_proc_queue',
                 mymock(None)
             ) as mock_proc_queue, unittest.mock.patch(
-                'oracle.oracle_server.asyncio.Queue',
-                mymock(_.queue)
-            ) as mock_queue:
+                'oracle.oracle_server.asyncio.Queue', mymock(_.queue)
+            ) as mock_queue, unittest.mock.patch(
+                'oracle.oracle_server.asyncio.sleep', mock_sleep_async
+            ):
               _put = mymock(None)
               async def put(*args, **kwargs):
                   _put(*args, **kwargs)
               _.queue.put = put
               ret = loop.run_until_complete(module_ut.WebSocket.open()(_.req))
         _put.assert_called_once_with(_.last_message)
-        self.assertEqual(module_ut.WebSocket.wss, [_.ws])
-        mock_close.assert_called_once_with(_.ws)
-        mock_proc_queue.assert_called_once_with(_.ws)
-        _.ws.send_str.assert_called_once_with('ping')
+        self.assertEqual(module_ut.WebSocket.wss, [myws])
+        mock_close.assert_called_once_with(myws)
+        mock_proc_queue.assert_called_once_with(myws)
+        self.assertEqual(mock_sleep.call_args_list, [
+            unittest.mock.call(10) for _ in range(5)
+        ])
+        self.assertEqual(myws.send_str.call_args_list, [
+            unittest.mock.call('ping') for _ in range(6)
+        ])
         module_ut.WebSocket.wss = []
         module_ut.WebSocket.queues = []
+
+
+class AsyncIterator:
+    def __init__(self, seq):
+        self.iter = iter(seq)
+
+    async def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        try:
+            return next(self.iter)
+        except StopIteration:
+            raise StopAsyncIteration
 
 
 if __name__ == '__main__':
