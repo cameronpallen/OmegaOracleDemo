@@ -309,6 +309,8 @@ class WebSocket(object):
                 #   websocket conneciton alive.
                 ws.send_str('ping')
                 async for msg in ws:
+                    # Every time client responds with a ping wait ten seconds
+                    #   and then send another ping to keep connection alive
                     logging.info(msg)
                     await asyncio.sleep(10)
                     ws.send_str('ping')

@@ -378,6 +378,86 @@ class TestWebSocket(unittest.TestCase):
         finally:
             module_ut.wss = []
 
+    def test_parse_args(self):
+        ret = module_ut.parse_args([])
+        self.assertEqual(ret, (7879, '/tmp/oracle/'))
+        ret = module_ut.parse_args(['--port', '12'])
+        self.assertEqual(ret, (12, '/tmp/oracle/'))
+        ret = module_ut.parse_args(['--tempdir', 'mytmp'])
+        self.assertEqual(ret, (7879, 'mytmp'))
+        ret = module_ut.parse_args(['--port', '12', '--tempdir', 'mytmp'])
+        self.assertEqual(ret, (12, 'mytmp'))
+        ret = module_ut.parse_args(['--tempdir', 'mytmp', '--port', '12'])
+        self.assertEqual(ret, (12, 'mytmp'))
+
+    def test_open(self):
+        loop = asyncio.new_event_loop()
+        _.req.app = _.app
+        _.app.loop = loop
+        _prepare = mymock(None)
+        _.ws.send_str = mymock(None)
+
+        async def prepare(*args, **kwargs):
+            return _prepare(*args, **kwargs)
+        _.ws.prepare = prepare
+        module_ut.WebSocket.last_message = None
+        with unittest.mock.patch(
+                'oracle.oracle_server.aiohttp.web.WebSocketResponse',
+                mymock(_.ws)
+            ) as mock_ws_response, unittest.mock.patch(
+                'oracle.oracle_server.WebSocket._on_close',
+                mymock(None)
+            ) as mock_close, unittest.mock.patch(
+                'oracle.oracle_server.WebSocket._sched_proc_queue',
+                mymock(None)
+            ) as mock_proc_queue, unittest.mock.patch(
+                'oracle.oracle_server.asyncio.Queue',
+                mymock(_.queue)
+            ) as mock_queue:
+              ret = loop.run_until_complete(module_ut.WebSocket.open()(_.req))
+        self.assertEqual(module_ut.WebSocket.wss, [_.ws])
+        mock_close.assert_called_once_with(_.ws)
+        mock_proc_queue.assert_called_once_with(_.ws)
+        module_ut.WebSocket.wss = []
+        module_ut.WebSocket.queues = []
+        _.ws.send_str.assert_called_once_with('ping')
+
+        loop = asyncio.new_event_loop()
+        _.req.app = _.app
+        _.app.loop = loop
+        _prepare = mymock(None)
+        _.ws.send_str = mymock(None)
+
+        async def prepare(*args, **kwargs):
+            return _prepare(*args, **kwargs)
+        _.ws.prepare = prepare
+        module_ut.WebSocket.last_message = _.last_message
+        with unittest.mock.patch(
+                'oracle.oracle_server.aiohttp.web.WebSocketResponse',
+                mymock(_.ws)
+            ) as mock_ws_response, unittest.mock.patch(
+                'oracle.oracle_server.WebSocket._on_close',
+                mymock(None)
+            ) as mock_close, unittest.mock.patch(
+                'oracle.oracle_server.WebSocket._sched_proc_queue',
+                mymock(None)
+            ) as mock_proc_queue, unittest.mock.patch(
+                'oracle.oracle_server.asyncio.Queue',
+                mymock(_.queue)
+            ) as mock_queue:
+              _put = mymock(None)
+              async def put(*args, **kwargs):
+                  _put(*args, **kwargs)
+              _.queue.put = put
+              ret = loop.run_until_complete(module_ut.WebSocket.open()(_.req))
+        _put.assert_called_once_with(_.last_message)
+        self.assertEqual(module_ut.WebSocket.wss, [_.ws])
+        mock_close.assert_called_once_with(_.ws)
+        mock_proc_queue.assert_called_once_with(_.ws)
+        _.ws.send_str.assert_called_once_with('ping')
+        module_ut.WebSocket.wss = []
+        module_ut.WebSocket.queues = []
+
 
 if __name__ == '__main__':
     unittest.main()
