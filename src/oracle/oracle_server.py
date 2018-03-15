@@ -6,6 +6,7 @@ import functools
 import json
 import logging
 import os
+import sys
 import threading
 
 import aiohttp.web
@@ -321,13 +322,21 @@ class WebSocket(object):
         ''' Close all client connections, sending an appropriate message to the
         web clients.'''
         with cls.queues_list_lock:
-            for ws in cls.wss:
-                await ws.close(code=999, message='server shutdown')
+            #for ws in cls.wss:
+            #    await ws.close(code=999, message='server shutdown')
+            await asyncio.gather(*[
+                 ws.close(code=999, message='server shutdown')
+                 for ws in cls.wss
+            ], loop=kwargs.get('loop', None))
 
 
-if __name__ == '__main__':
+def parse_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', default=7879, type=int)
     parser.add_argument('--tempdir', default='/tmp/oracle/')
-    args = parser.parse_args()
-    main(args.port, args.tempdir)
+    args = parser.parse_args(args)
+    return args.port, args.tempdir
+
+
+if __name__ == '__main__':
+    main(*parse_args(sys.argv[1:]))
