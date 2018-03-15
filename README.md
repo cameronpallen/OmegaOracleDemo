@@ -37,4 +37,4 @@ version so do not worry about it, the directory does not have to exist.
 Production version requires additional javascript dependencies which are linked
 direcly here.
 
-Tested on python 3.5.1
+Tested on python 3.6.3
