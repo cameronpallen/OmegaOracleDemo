@@ -1,10 +1,10 @@
 # OmegaOracleDemo
 
-Demo and funtional test of the Omega Oracle web app. Not connected to the real 
+Demo and development environment the Omega Oracle web app. Not connected to the real 
 forecast backend for simplicity and to protect sensitive data.
 
-There is a deployment of this app (on a semi-reliable server) 
-[__here__](https://oracle.cameronpallen.com/netarts#) which is publicly accessable 
+There is a [__deployment of this app here__](https://oracle.cameronpallen.com/netarts#) (on a semi-reliable server) 
+ which is publicly accessable 
 for demonstration purposes.
 
 This app was built to display time series of real time monitoring and forecast
@@ -38,3 +38,12 @@ Production version requires additional javascript dependencies which are linked
 direcly here.
 
 Tested on python 3.6.3
+
+## Tests
+
+```pip install nose```
+
+```pip install coverage```
+
+```nosetests tests/unit --with-coverage --cover-html --cover-html-dir=<html-dir> --cover-inclusive --cover-erase --cover-package=oracle```
+
