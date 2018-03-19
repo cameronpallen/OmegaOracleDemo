@@ -3,7 +3,7 @@
 Demo and development environment the Omega Oracle web app. Not connected to the real 
 forecast backend for simplicity and to protect sensitive data.
 
-There is a [__deployment of this app here__](https://oracle.cameronpallen.com/netarts#) (on a semi-reliable server) 
+There is a [__deployment of this app here__](https://oracle.cameronpallen.com/netarts#) (on a semi-reliable server and self-signed ssl) 
  which is publicly accessable 
 for demonstration purposes.
 
