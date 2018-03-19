@@ -23,7 +23,7 @@ import mock
 import time
 est_Ω = mock.Mock()
 def mock_predict():
-    # Simulate cpu blocking to demonstrat the server remains responsive.
+    # Simulate cpu blocking to demonstrate the server remains responsive.
     time.sleep(3)
     N = 24 * 4 * 14
     # return some fake data.
