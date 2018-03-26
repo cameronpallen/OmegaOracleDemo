@@ -1,3 +1,14 @@
+'''
+The aiohttp http endpoint serves html (+ css, etc) to the client.
+The client (through javascript in index.html) then opens a websocket
+connection with the aiohttp server. The server keeps track of each of these
+websocket connections with all connected clients. The server is periodically
+updating its prediction as it downloads more weather predicion data from the
+web and receives new telemetry from the chemical monitoring instrument at the
+oyster hatchery. Each time these predicionts and measurements are updated the
+server uses the websocket connections to send a new packet of data to each
+of the connected clients so their plots can be udpated.
+'''
 import argparse
 import asyncio
 import concurrent.futures
