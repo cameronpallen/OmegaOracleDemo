@@ -6,8 +6,9 @@
 @import url(https://rawgit.com/novus/nvd3/v1.8.4/build/nv.d3.min.css);
 </style>
 <center><h1>\(\Omega\) Oracle \(\Omega\)  </h1></center>
+<center><h2> currently in demo mode with fake data </h2></center>
 <div id="chart">
-  <svg style='height:700px'></svg>
+  <svg style='height:400px'></svg>
 </div>
 <center>
 <br>
@@ -97,10 +98,9 @@ nv.addGraph(function() {
                 .showLegend(true)       //Show the legend, allowing users toturn on/off line series.
                 .showYAxis(true)        //Show the y-axis
                 .showXAxis(true)        //Show the x-axis
-                .focusHeight(150)
+                .focusHeight(100)
        //         .interpolate('basis', .3)
   ;
-
   chart.xAxis     //Chart x-axis settings
       .axisLabel('Time')
       .tickFormat(function(d) { return d3.time.format('%b%e %I%p')(new Date(d)); })
@@ -109,15 +109,10 @@ nv.addGraph(function() {
       .tickFormat(function(d) { return d3.time.format('%b%e %I%p')(new Date(d)); })
 
   chart.yAxis     //Chart y-axis settings
-  //.axisLabel('Ωarag')
       .tickFormat(function(num){return num === null ? 'NaN' : d3.format('.02f')(num)});
 
   chart.y2Axis     //Chart y-axis settings
-  //.axisLabel('Ωarag')
       .tickFormat(function(num){return num === null ? 'NaN' : d3.format('.02f')(num)});
-
-  //Update the chart when window resizes.
-  //nv.utils.windowResize(chart.update)
   nv.utils.windowResize(function(){ chart.update(); });
   return chart;
 });
@@ -136,7 +131,7 @@ ws.onmessage = function(ev){
     oldlabel = d3.selectAll('.nv-y').selectAll('.nv-axislabel').node().remove()
     d3.select('#chart svg').append('foreignObject').attr("width", 50).attr("height", 50)
            .attr('x', 25)
-           .attr('y', 230)
+           .attr('y', 200)
          .append("xhtml:text").html("\\(\\Omega_\\text{Arag}\\)");
      MathJax.Hub.Queue(["Typeset",MathJax.Hub, d3.select('#chart svg').node()])
     }
