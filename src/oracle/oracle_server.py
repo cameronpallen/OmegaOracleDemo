@@ -214,7 +214,7 @@ def _read_file(directory, page):
 def index(directory):
     ''' Serve static files from the current directory. '''
     async def _index(request):
-        page = (request.match_info.get('page') or 'index.html').strip('/')
+        page = (request.match_info.get('page').strip('/') or 'index.html').strip('/')
         logging.info('load page: [{}]'.format(
             os.path.join(directory, page))
         )
@@ -271,7 +271,7 @@ class WebSocket(object):
     async def _proc_queue(self, ws):
         try:
             message = await self._queue.get()
-            ws.send_str(message)
+            await ws.send_str(message)
             self._queue.task_done()
         finally:
             if ws.closed:
@@ -318,7 +318,7 @@ class WebSocket(object):
                 instance._sched_proc_queue(ws)
                 # Send messages every 20 seconds for logging and to keep the
                 #   websocket conneciton alive.
-                ws.send_str('ping')
+                await ws.send_str('ping')
                 async for msg in ws:
                     # Every time client responds with a ping wait ten seconds
                     #   and then send another ping to keep connection alive
