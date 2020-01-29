@@ -116,9 +116,9 @@ nv.addGraph(function() {
   nv.utils.windowResize(function(){ chart.update(); });
   return chart;
 });
-ws = new WebSocket('wss://oracle.cameronpallen.com/oracle_ws/netarts/');
+ws = new WebSocket('ws://oracle.cameronpallen.com/oracle_ws/netarts/');
 ws.onclose = function(){
-   ws = new WebSocket('wss://oracle.cameronpallen.com/oracle_ws/netarts/');
+   ws = new WebSocket('ws://oracle.cameronpallen.com/oracle_ws/netarts/');
 };
 ws.onmessage = function(ev){
     if (ev.data === 'ping') {ws.send('pong')} else {

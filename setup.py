@@ -16,7 +16,7 @@ setuptools.setup(
         packages=setuptools.find_packages('src'),
         package_dir={'': 'src'},
         install_requires=[
-            'aiohttp>=2.1.0',
+            'aiohttp<4.0.0',
             'numpy>=1.12.1',
             'pandas>=0.22.0',
             'mock>=2.0.0',
