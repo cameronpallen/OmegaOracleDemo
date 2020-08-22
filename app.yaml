@@ -1,0 +1,14 @@
+runtime: python
+env: flex
+entrypoint: gunicorn -b :$PORT oracle_server:gunicorn  --worker-class aiohttp.worker.GunicornWebWorker
+
+runtime_config:
+  python_version: 3
+
+manual_scaling:
+  instances: 1
+resources:
+  cpu: 1
+  memory_gb: 0.6
+  disk_size_gb: 10
+

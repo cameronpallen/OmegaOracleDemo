@@ -64,7 +64,11 @@ def mock_predict():
 est_Ω.train_ensemble.return_value.predict_live = mock_predict
 
 
-def main(port, tempdir):
+async def gunicorn():
+    return await _make_app('/')
+
+
+async def _make_app(tempdir):
     logging.root.setLevel(logging.INFO)
     app = aiohttp.web.Application()
     # Endpoints for the static html, css, and image files.
@@ -97,7 +101,11 @@ def main(port, tempdir):
     app.on_startup.append((schedule_task(update_job,
         datetime.timedelta(seconds=5))))
     app.on_shutdown.append(WebSocket.shutdown)
-    # Start serving the app.
+    return app
+
+
+def main(port, tempdir):
+    app = _make_app(tempdir)
     aiohttp.web.run_app(app, port=port)
 
 
