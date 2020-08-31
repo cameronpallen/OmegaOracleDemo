@@ -23,6 +23,7 @@ import threading
 import aiohttp.web
 import numpy
 import pandas
+import scipy.signal
 
 ENSEMBLE_SIZE = 10
 
@@ -60,7 +61,29 @@ def mock_predict():
       )
     )
     ret.loc[datetime.datetime.now():, 'Ω'] = numpy.nan
-    return ret
+    # Modify the psd of the above ts to make something more 
+    #  visually interesting.
+    fft = numpy.fft.fft(ret.loc[:, 'Ω_est'])
+    freq = numpy.fft.fftfreq(len(fft))
+    fft2 = fft ** 2
+    c = 50
+    fft2 = numpy.convolve(fft2, scipy.signal.triang(5) / 2, 'same')
+    fft3 = fft2.copy()
+    fft2.imag = numpy.random.random(len(fft2)) * 2 - 1
+    fft3.imag = numpy.random.random(len(fft3)) * 2 - 1
+    fft3[numpy.abs(fft3.real) > 1e4] = fft2[numpy.abs(fft3.real) > 1e4]
+    fft2[c:-c] += (freq[c:-c] ** -1) * 1e0
+    fft3[c:-c] += (freq[c:-c] ** -1) * 5e0
+    fft2 = fft2 ** .5
+    fft3 = fft3 ** .5
+    fft2[:2] = fft[:2]
+    fft2[-2:] = fft[-2:]
+    fft3[:2] = fft[:2]
+    fft3[-2:] = fft[-2:]
+    ret.loc[:, 'Ω_est'] = numpy.fft.ifft(fft2).real
+    ret.loc[:, 'Ω'] = numpy.fft.ifft(fft3).real
+    ret.loc[datetime.datetime.now():, 'Ω'] = numpy.nan
+    return ret.iloc[4:-4]
 est_Ω.train_ensemble.return_value.predict_live = mock_predict
 
 
@@ -99,7 +122,7 @@ async def _make_app(tempdir):
     update_job = update_omega(load_model)
     # Begin scheduled updates of model prediction
     app.on_startup.append((schedule_task(update_job,
-        datetime.timedelta(seconds=5))))
+        datetime.timedelta(seconds=10))))
     app.on_shutdown.append(WebSocket.shutdown)
     return app
 
